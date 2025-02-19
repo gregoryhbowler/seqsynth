@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>3 Step Sequencers + Tempo + Octave Shifts + Probability</title>
+<style>
+  body {
+    margin: 0; padding: 0;
+    background: #111; color: #eee;
+    font-family: sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+  header, footer {
+    background: #222; padding: 8px;
+  }
+  #main {
+    display: flex; flex-wrap: wrap;
+    padding: 8px;
+  }
+  .section {
+    background: #1a1a1a; 
+    border: 1px solid #444; 
+    border-radius: 8px;
+    margin: 4px; 
+    padding: 8px; 
+    min-width: 280px;
+    box-sizing: border-box;
+  }
+  button, select, input {
+    background: #333; 
+    color: #eee; 
+    border: 1px solid #555; 
+    border-radius: 4px; 
+    padding: 6px 8px; 
+    margin: 4px 0; 
+    cursor: pointer;
+  }
+  button:hover, select:hover, input:hover {
+    background: #444;
+  }
+  label { display: block; margin: 4px 0; }
+  .stepCanvas {
+    display: block;
+    background: #222;
+    border: 2px solid #666;
+    margin: 6px 0;
+    touch-action: none;
+  }
+  .xyPad {
+    width: 260px; 
+    height: 160px; 
+    background: #222; 
+    border: 2px solid #666;
+    position: relative; 
+    margin: 6px 0; 
+    touch-action: none;
+  }
+  .touchIndicator {
+    position: absolute;
+    width: 24px; height: 24px;
+    border: 2px solid #fff8;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    pointer-events: none;
+    transform: translate(-12px, -12px);
+  }
+  .adsrContainer {
+    display: flex; 
+    justify-content: space-between;
+    width: 260px; 
+    margin-top: 8px;
+  }
+  .adsrSlider {
+    flex:1;
+    margin:0 2px;
+    background:#222;
+    border:2px solid #666;
+    position:relative;
+    height:120px;
+    touch-action:none;
+  }
+  .adsrHandle {
+    position:absolute;
+    left:0; right:0;
+    height:10px;
+    background:#f06;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>3 Step Sequencers + Tempo + Octave Shifts + Probability</h1>
+</header>
+
+<div id="main">
+  <!-- Master Controls -->
+  <div class="section">
+    <h2>Master / Scale Setup</h2>
+    <button id="initBtn">Enable Audio</button>
+    <button id="playBtn">Play</button>
+    <label>Tempo (BPM):
+      <input type="number" id="bpmInput" value="60" min="20" max="300" style="width:60px;">
+    </label>
+    <label>Root Note:
+      <select id="rootNoteSelect"></select>
+    </label>
+    <label>Scale/Mode:
+      <select id="scaleModeSelect">
+        <option value="major">Major (Ionian)</option>
+        <option value="minor">Natural Minor (Aeolian)</option>
+        <option value="dorian">Dorian</option>
+        <option value="phrygian">Phrygian</option>
+        <option value="lydian">Lydian</option>
+        <option value="mixolydian">Mixolydian</option>
+        <option value="locrian">Locrian</option>
+      </select>
+    </label>
+    <label>Waveform:
+      <select id="waveSelect">
+        <option value="sine">Sine</option>
+        <option value="square">Square</option>
+        <option value="sawtooth">Saw</option>
+        <option value="triangle">Triangle</option>
+      </select>
+    </label>
+  </div>
+
+  <!-- Sequencer A -->
+  <div class="section">
+    <h2>Sequencer A</h2>
+    <label>Steps (1-16):
+      <input type="number" id="stepsA" min="1" max="16" value="8" style="width:50px;">
+    </label>
+    <label>Speed factor:
+      <input type="number" id="speedA" min="0.1" step="0.1" value="1" style="width:50px;">
+    </label>
+    <label>Octave Shift:
+      <select id="octaveA">
+        <option value="0">0</option>
+        <option value="12">+1</option>
+        <option value="24">+2</option>
+        <option value="-12">-1</option>
+        <option value="-24">-2</option>
+      </select>
+    </label>
+    <label>Octave Random %:
+      <input type="number" id="octProbA" min="0" max="100" value="0" style="width:50px;"> 
+    </label>
+    <canvas id="canvasA" class="stepCanvas" width="320" height="180"></canvas>
+  </div>
+
+  <!-- Sequencer B -->
+  <div class="section">
+    <h2>Sequencer B</h2>
+    <label>Steps (1-16):
+      <input type="number" id="stepsB" min="1" max="16" value="8" style="width:50px;">
+    </label>
+    <label>Speed factor:
+      <input type="number" id="speedB" min="0.1" step="0.1" value="1.5" style="width:50px;">
+    </label>
+    <label>Octave Shift:
+      <select id="octaveB">
+        <option value="0">0</option>
+        <option value="12">+1</option>
+        <option value="24">+2</option>
+        <option value="-12">-1</option>
+        <option value="-24">-2</option>
+      </select>
+    </label>
+    <label>Octave Random %:
+      <input type="number" id="octProbB" min="0" max="100" value="50" style="width:50px;"> 
+    </label>
+    <canvas id="canvasB" class="stepCanvas" width="320" height="180"></canvas>
+  </div>
+
+  <!-- Sequencer C -->
+  <div class="section">
+    <h2>Sequencer C</h2>
+    <label>Steps (1-16):
+      <input type="number" id="stepsC" min="1" max="16" value="8" style="width:50px;">
+    </label>
+    <label>Speed factor:
+      <input type="number" id="speedC" min="0.1" step="0.1" value="0.75" style="width:50px;">
+    </label>
+    <label>Octave Shift:
+      <select id="octaveC">
+        <option value="0">0</option>
+        <option value="12">+1</option>
+        <option value="24">+2</option>
+        <option value="-12">-1</option>
+        <option value="-24">-2</option>
+      </select>
+    </label>
+    <label>Octave Random %:
+      <input type="number" id="octProbC" min="0" max="100" value="25" style="width:50px;"> 
+    </label>
+    <canvas id="canvasC" class="stepCanvas" width="320" height="180"></canvas>
+  </div>
+
+  <!-- XY Pad #1 -->
+  <div class="section">
+    <h2>XY Pad #1</h2>
+    <p>
+      X = Filter Cutoff, Y = Delay Feedback<br/>
+      (2-finger => random Filter Q)
+    </p>
+    <div id="xyPad1" class="xyPad"></div>
+  </div>
+
+  <!-- XY Pad #2 -->
+  <div class="section">
+    <h2>XY Pad #2</h2>
+    <p>
+      X = Reverb Mix, Y = Distortion Amount
+    </p>
+    <div id="xyPad2" class="xyPad"></div>
+  </div>
+
+  <!-- ADSR Sliders -->
+  <div class="section">
+    <h2>Global ADSR</h2>
+    <p>Drag sliders to adjust Attack, Decay, Sustain, Release</p>
+    <div class="adsrContainer">
+      <div id="adsrA" class="adsrSlider"></div>
+      <div id="adsrD" class="adsrSlider"></div>
+      <div id="adsrS" class="adsrSlider"></div>
+      <div id="adsrR" class="adsrSlider"></div>
+    </div>
+    <p style="font-size:90%;opacity:0.8;">
+      Attack/Decay/Release range 0..2s, Sustain 0..1
+    </p>
+  </div>
+</div>
+
+<footer>
+  <p style="text-align:center;">Single-file example – tweak & expand as needed!</p>
+</footer>
+
+<script>
+(()=>{
+'use strict';
+
+// ----------------------------
+// 1) GLOBAL AUDIO & ENVELOPE
+// ----------------------------
+let audioCtx;
+let playing=false;
+let requestId=null;
+
+// We'll read BPM from an <input> each step
+function getBPM(){
+  const bpmEl=document.getElementById('bpmInput');
+  return Math.max(20, Math.min(300, parseFloat(bpmEl.value) || 60));
+}
+
+// Synthesis chain: voice -> filter -> delay -> reverb -> dist -> master
+let filterNode, delayNode, delayFeedbackNode, reverbNode, reverbMixNode, distortionNode, distCurve, masterGain;
+
+// ADSR
+const adsr={attack:0.1, decay:0.3, sustain:0.5, release:0.5};
+
+// Voice pool
+const MAX_VOICES=12;
+const voices=[];
+
+// ----------------------------
+// 2) STEP SEQUENCERS
+// ----------------------------
+/*
+   Each lane has:
+   - steps (1..16)
+   - speed (float)
+   - pattern[] (size=16): each step is a row index or -1 => no note
+   - nextTime, stepIndex
+   - canvas
+   - octaveShift (e.g. 12 => +1 octave, 0 => none, -12 => -1 octave)
+   - octaveProb (0..100) chance to shift ±12
+*/
+const lanes=[
+  { steps:8, speed:1.0, pattern:new Array(16).fill(-1), canvas:null, nextTime:0, stepIndex:0,
+    octaveShift:0, octaveProb:0 },
+  { steps:8, speed:1.5, pattern:new Array(16).fill(-1), canvas:null, nextTime:0, stepIndex:0,
+    octaveShift:0, octaveProb:0 },
+  { steps:8, speed:0.75,pattern:new Array(16).fill(-1), canvas:null, nextTime:0, stepIndex:0,
+    octaveShift:0, octaveProb:0 },
+];
+
+// Current scale
+let currentScale=[];
+let rootMidi=36; // C2
+let scaleMode='major';
+
+// ----------------------------
+// AUDIO INIT
+// ----------------------------
+function initAudioGraph(){
+  if(!audioCtx){
+    audioCtx=new AudioContext();
+  }
+  filterNode=audioCtx.createBiquadFilter();
+  filterNode.type='lowpass';
+  filterNode.frequency.value=800;
+  filterNode.Q.value=1;
+
+  delayNode=audioCtx.createDelay(2.0);
+  delayNode.delayTime.value=0.4;
+  delayFeedbackNode=audioCtx.createGain();
+  delayFeedbackNode.gain.value=0.3;
+  delayNode.connect(delayFeedbackNode);
+  delayFeedbackNode.connect(delayNode);
+
+  reverbNode=audioCtx.createConvolver();
+  reverbNode.buffer=createImpulseBuffer(audioCtx);
+
+  reverbMixNode=audioCtx.createGain();
+  reverbMixNode.gain.value=0.5;
+  reverbNode.connect(reverbMixNode);
+
+  distortionNode=audioCtx.createWaveShaper();
+  distCurve=makeDistCurve(0);
+  distortionNode.curve=distCurve;
+  distortionNode.oversample='4x';
+
+  masterGain=audioCtx.createGain();
+  masterGain.gain.value=0.8;
+
+  // Connect chain
+  filterNode.connect(delayNode);
+  delayNode.connect(reverbNode);
+  reverbMixNode.connect(distortionNode);
+  distortionNode.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  // Create voices
+  for(let i=0;i<MAX_VOICES;i++){
+    voices.push(createVoice());
+  }
+}
+
+function createImpulseBuffer(ctx){
+  const length=1.0*ctx.sampleRate;
+  const buf=ctx.createBuffer(2,length,ctx.sampleRate);
+  for(let c=0;c<2;c++){
+    let data=buf.getChannelData(c);
+    for(let i=0;i<length;i++){
+      data[i]=(Math.random()*2-1)*Math.pow(1 - i/length,2);
+    }
+  }
+  return buf;
+}
+
+function createVoice(){
+  const osc=audioCtx.createOscillator();
+  osc.type='sine';
+  const vGain=audioCtx.createGain();
+  vGain.gain.value=0;
+  osc.connect(vGain);
+  vGain.connect(filterNode);
+  osc.start();
+  return {osc,gain:vGain,playing:false,releaseEnd:0};
+}
+
+function makeDistCurve(amount=0){
+  const n=256;
+  const c=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    let x=i/(n-1)*2-1;
+    c[i]=(1+amount)*x/(1+amount*Math.abs(x));
+  }
+  return c;
+}
+
+// ----------------------------
+// 3) SCHEDULING
+// ----------------------------
+function startSequencers(){
+  if(!audioCtx) return;
+  if(playing) return;
+  playing=true;
+  const now=audioCtx.currentTime;
+  lanes.forEach(l=>{
+    l.stepIndex=0;
+    l.nextTime=now;
+  });
+  scheduleLoop();
+}
+
+function stopSequencers(){
+  playing=false;
+  if(requestId) cancelAnimationFrame(requestId);
+  requestId=null;
+}
+
+function scheduleLoop(){
+  if(!playing) return;
+  const now=audioCtx.currentTime;
+  const bpm=getBPM();
+
+  lanes.forEach(l=>{
+    while(l.nextTime < now+0.1){
+      // read pattern
+      let stepIdx = l.stepIndex%l.steps;
+      let noteRow = l.pattern[stepIdx];
+      if(noteRow>=0 && noteRow<currentScale.length){
+        // final pitch = scale note + lane.octaveShift + optional ±12 with probability
+        let baseNote=currentScale[noteRow];
+        let finalNote= baseNote + l.octaveShift;
+        // random extra octave?
+        if(Math.random()*100< l.octaveProb){
+          // ±12 with 50% chance
+          finalNote += (Math.random()<0.5 ? 12 : -12);
+        }
+        // define step duration
+        let stepLen=(60/bpm)*l.speed; 
+        playNote(finalNote, stepLen*0.75); 
+      }
+      l.stepIndex++;
+      l.nextTime += (60/bpm)*l.speed;
+    }
+  });
+
+  requestId=requestAnimationFrame(scheduleLoop);
+}
+
+function playNote(midiNote, duration=0.5){
+  // find voice
+  let v=voices[0];
+  let oldestEnd=v.releaseEnd;
+  for(let i=1;i<voices.length;i++){
+    if(!voices[i].playing){
+      v=voices[i];
+      break;
+    }
+    if(voices[i].releaseEnd<oldestEnd){
+      v=voices[i];
+      oldestEnd=voices[i].releaseEnd;
+    }
+  }
+  v.playing=true;
+  const now=audioCtx.currentTime;
+  const freq=440*Math.pow(2,(midiNote-69)/12);
+  v.osc.type=document.getElementById('waveSelect').value;
+  v.osc.frequency.setValueAtTime(freq, now);
+
+  // ADSR
+  v.gain.gain.cancelScheduledValues(now);
+  v.gain.gain.setValueAtTime(0, now);
+  v.gain.gain.linearRampToValueAtTime(1, now+adsr.attack);
+  v.gain.gain.linearRampToValueAtTime(adsr.sustain, now+adsr.attack+adsr.decay);
+
+  // note off
+  let offTime=now+duration;
+  let endTime=offTime+adsr.release;
+  setTimeout(()=>{v.playing=false;}, adsr.release*1000+50);
+  
+  v.gain.gain.setValueAtTime(adsr.sustain, offTime);
+  v.gain.gain.linearRampToValueAtTime(0, endTime);
+  v.releaseEnd=endTime;
+}
+
+// ----------------------------
+// 4) SCALE
+// ----------------------------
+function rebuildScale(){
+  currentScale=buildScale(rootMidi, scaleMode);
+  // if pattern references invalid row => set to -1
+  lanes.forEach(l=>{
+    for(let s=0;s<16;s++){
+      if(l.pattern[s]>= currentScale.length){
+        l.pattern[s]=-1;
+      }
+    }
+    drawSequencerCanvas(l);
+  });
+}
+
+function buildScale(root, mode){
+  const modes = {
+    major:[0,2,4,5,7,9,11,12],
+    minor:[0,2,3,5,7,8,10,12],
+    dorian:[0,2,3,5,7,9,10,12],
+    phrygian:[0,1,3,5,7,8,10,12],
+    lydian:[0,2,4,6,7,9,11,12],
+    mixolydian:[0,2,4,5,7,9,10,12],
+    locrian:[0,1,3,5,6,8,10,12]
+  };
+  let iv = modes[mode]||modes.major;
+  let notes=[];
+  // 2 octaves
+  for(let oct=0; oct<2; oct++){
+    iv.forEach(ivv=>{
+      notes.push(root + ivv + 12*oct);
+    });
+  }
+  return notes;
+}
+
+// ----------------------------
+// 5) SEQUENCER CANVAS
+// ----------------------------
+function initSequencerCanvas(lane, canvas){
+  lane.canvas=canvas;
+  lane.pattern.fill(-1);
+  canvas.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    handleSeqPointer(lane,e);
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(e.buttons>0) handleSeqPointer(lane,e);
+  });
+  drawSequencerCanvas(lane);
+}
+
+function drawSequencerCanvas(lane){
+  const ctx=lane.canvas.getContext('2d');
+  let w=lane.canvas.width,h=lane.canvas.height;
+  ctx.clearRect(0,0,w,h);
+  let rows=currentScale.length;
+  let cols=lane.steps;
+  if(rows<1){ 
+    ctx.fillStyle='#888';
+    ctx.fillText('No scale',10,20);
+    return;
+  }
+  let cellW=w/cols;
+  let cellH=h/rows;
+
+  // grid lines
+  ctx.strokeStyle='#666';
+  for(let c=0;c<cols;c++){
+    let x=c*cellW;
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,h);
+    ctx.stroke();
+  }
+  for(let r=0;r<rows;r++){
+    let y=r*cellH;
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(w,y);
+    ctx.stroke();
+  }
+  // highlight pattern
+  for(let c=0;c<cols;c++){
+    let nr=lane.pattern[c];
+    if(nr>=0 && nr<rows){
+      let x=c*cellW, y=nr*cellH;
+      ctx.fillStyle='#f06';
+      ctx.fillRect(x+1,y+1,cellW-2,cellH-2);
+    }
+  }
+  // border
+  ctx.beginPath();
+  ctx.rect(0,0,w,h);
+  ctx.stroke();
+}
+
+function handleSeqPointer(lane,e){
+  let rect=lane.canvas.getBoundingClientRect();
+  let offsetX=e.clientX-rect.left, offsetY=e.clientY-rect.top;
+  let rows=currentScale.length, cols=lane.steps;
+  if(rows<1||cols<1) return;
+  let cellW=lane.canvas.width/cols;
+  let cellH=lane.canvas.height/rows;
+  let c=Math.floor(offsetX/cellW);
+  let r=Math.floor(offsetY/cellH);
+  if(c<0||c>=cols||r<0||r>=rows) return;
+  if(lane.pattern[c]===r) lane.pattern[c]=-1; 
+  else lane.pattern[c]=r;
+  drawSequencerCanvas(lane);
+}
+
+// ----------------------------
+// 6) XY PADS
+// ----------------------------
+function initXyPad(elem, moveCallback){
+  let pointers=new Map();
+  elem.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    elem.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+    createTouchIndicator(elem,e.pointerId,e.offsetX,e.offsetY);
+    moveCallback(Array.from(pointers.values()),elem);
+  });
+  elem.addEventListener('pointermove', e=>{
+    if(pointers.has(e.pointerId)){
+      pointers.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+      moveTouchIndicator(elem,e.pointerId,e.offsetX,e.offsetY);
+      moveCallback(Array.from(pointers.values()),elem);
+    }
+  });
+  elem.addEventListener('pointerup', e=>{
+    if(pointers.has(e.pointerId)){
+      pointers.delete(e.pointerId);
+      removeTouchIndicator(elem,e.pointerId);
+      moveCallback(Array.from(pointers.values()),elem);
+    }
+  });
+  elem.addEventListener('pointercancel', e=>{
+    if(pointers.has(e.pointerId)){
+      pointers.delete(e.pointerId);
+      removeTouchIndicator(elem,e.pointerId);
+      moveCallback(Array.from(pointers.values()),elem);
+    }
+  });
+  elem.addEventListener('pointerleave', e=>{
+    if(pointers.has(e.pointerId)){
+      pointers.delete(e.pointerId);
+      removeTouchIndicator(elem,e.pointerId);
+      moveCallback(Array.from(pointers.values()),elem);
+    }
+  });
+}
+
+// XY #1 => FilterCutoff, DelayFeedback, 2finger => random Q
+function xyPad1Move(points, padElem){
+  if(!audioCtx||!filterNode||!delayFeedbackNode) return;
+  if(points.length<1) return;
+  let rect=padElem.getBoundingClientRect();
+  let avgX=0,avgY=0;
+  points.forEach(p=>{avgX+=p.x; avgY+=p.y;});
+  avgX/=points.length;
+  avgY/=points.length;
+  let nx=avgX/rect.width; //0..1
+  let ny=avgY/rect.height; //0..1
+
+  let cutoff=100+nx*4900;
+  filterNode.frequency.setValueAtTime(cutoff,audioCtx.currentTime);
+
+  let fb=ny*0.9;
+  delayFeedbackNode.gain.setValueAtTime(fb,audioCtx.currentTime);
+
+  if(points.length>=2){
+    let qVal=1+Math.random()*15;
+    filterNode.Q.setValueAtTime(qVal,audioCtx.currentTime);
+  } else {
+    filterNode.Q.setValueAtTime(1,audioCtx.currentTime);
+  }
+}
+
+// XY #2 => Reverb Mix, Distortion Amount
+function xyPad2Move(points, padElem){
+  if(!audioCtx||!reverbMixNode||!distortionNode) return;
+  if(points.length<1) return;
+  let rect=padElem.getBoundingClientRect();
+  let avgX=0,avgY=0;
+  points.forEach(p=>{avgX+=p.x; avgY+=p.y;});
+  avgX/=points.length; avgY/=points.length;
+  let nx=avgX/rect.width;
+  let ny=avgY/rect.height;
+
+  reverbMixNode.gain.setValueAtTime(nx,audioCtx.currentTime);
+
+  let distAmt=ny*2;
+  distCurve=makeDistCurve(distAmt);
+  distortionNode.curve=distCurve;
+}
+
+function createTouchIndicator(container, id,x,y){
+  const d=document.createElement('div');
+  d.className='touchIndicator';
+  d.id='tid_'+id;
+  d.style.left=x+'px';
+  d.style.top=y+'px';
+  container.appendChild(d);
+}
+function moveTouchIndicator(container, id,x,y){
+  const d=document.getElementById('tid_'+id);
+  if(d){
+    d.style.left=x+'px';
+    d.style.top=y+'px';
+  }
+}
+function removeTouchIndicator(container, id){
+  const d=document.getElementById('tid_'+id);
+  if(d){
+    container.removeChild(d);
+  }
+}
+
+// ----------------------------
+// 7) ADSR SLIDERS
+// ----------------------------
+function initAdsrSlider(elem, paramKey){
+  let pointerDown=false;
+  const handle=document.createElement('div');
+  handle.className='adsrHandle';
+  elem.appendChild(handle);
+
+  function setValFromY(y){
+    let rect=elem.getBoundingClientRect();
+    let h=rect.height;
+    let ny=1-(y/h);
+    if(ny<0) ny=0; if(ny>1) ny=1;
+    let val=0;
+    if(paramKey==='attack' || paramKey==='decay' || paramKey==='release'){
+      val=ny*2; //0..2
+    } else if(paramKey==='sustain'){
+      val=ny; //0..1
+    }
+    adsr[paramKey]=val;
+    redraw();
+  }
+  function redraw(){
+    let rect=elem.getBoundingClientRect();
+    let h=rect.height;
+    let val=adsr[paramKey];
+    let fraction=0;
+    if(paramKey==='attack'||paramKey==='decay'||paramKey==='release'){
+      fraction=val/2;
+    } else if(paramKey==='sustain'){
+      fraction=val;
+    }
+    let topPx=(1-fraction)*h -5;
+    handle.style.top=topPx+'px';
+  }
+
+  elem.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    pointerDown=true;
+    elem.setPointerCapture(e.pointerId);
+    setValFromY(e.offsetY);
+  });
+  elem.addEventListener('pointermove', e=>{
+    if(pointerDown){
+      setValFromY(e.offsetY);
+    }
+  });
+  elem.addEventListener('pointerup', e=>{pointerDown=false;});
+  elem.addEventListener('pointercancel', e=>{pointerDown=false;});
+  elem.addEventListener('pointerleave', e=>{
+    if(pointerDown) pointerDown=false;
+  });
+
+  redraw();
+}
+
+// ----------------------------
+// 8) DOM Hookup
+// ----------------------------
+document.getElementById('initBtn').addEventListener('click', async ()=>{
+  if(!audioCtx){
+    initAudioGraph();
+  }
+  if(audioCtx.state==='suspended'){
+    await audioCtx.resume();
+  }
+});
+
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  if(!audioCtx) return;
+  if(!playing){
+    startSequencers();
+    document.getElementById('playBtn').textContent='Stop';
+  } else {
+    stopSequencers();
+    document.getElementById('playBtn').textContent='Play';
+  }
+});
+
+// Root note select
+const noteNames=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+(function populateRootNotes(){
+  let sel=document.getElementById('rootNoteSelect');
+  for(let midi=36;midi<=84;midi++){
+    let nn= noteNames[midi%12]+(Math.floor(midi/12)-1);
+    let opt=document.createElement('option');
+    opt.value=midi;
+    opt.textContent=nn;
+    sel.appendChild(opt);
+  }
+  sel.value='36'; // C2 default
+})();
+document.getElementById('rootNoteSelect').addEventListener('change',e=>{
+  rootMidi=parseInt(e.target.value);
+  rebuildScale();
+});
+document.getElementById('scaleModeSelect').addEventListener('change', e=>{
+  scaleMode=e.target.value;
+  rebuildScale();
+});
+
+// Lane param changes
+function laneParamChanged(){
+  // Lane A
+  lanes[0].steps = parseInt(document.getElementById('stepsA').value);
+  lanes[0].speed = parseFloat(document.getElementById('speedA').value);
+  lanes[0].octaveShift = parseInt(document.getElementById('octaveA').value);
+  lanes[0].octaveProb = parseFloat(document.getElementById('octProbA').value);
+  drawSequencerCanvas(lanes[0]);
+
+  // Lane B
+  lanes[1].steps = parseInt(document.getElementById('stepsB').value);
+  lanes[1].speed = parseFloat(document.getElementById('speedB').value);
+  lanes[1].octaveShift = parseInt(document.getElementById('octaveB').value);
+  lanes[1].octaveProb = parseFloat(document.getElementById('octProbB').value);
+  drawSequencerCanvas(lanes[1]);
+
+  // Lane C
+  lanes[2].steps = parseInt(document.getElementById('stepsC').value);
+  lanes[2].speed = parseFloat(document.getElementById('speedC').value);
+  lanes[2].octaveShift = parseInt(document.getElementById('octaveC').value);
+  lanes[2].octaveProb = parseFloat(document.getElementById('octProbC').value);
+  drawSequencerCanvas(lanes[2]);
+}
+['stepsA','speedA','octaveA','octProbA',
+ 'stepsB','speedB','octaveB','octProbB',
+ 'stepsC','speedC','octaveC','octProbC',
+ 'bpmInput'
+].forEach(id=>{
+  document.getElementById(id).addEventListener('change', laneParamChanged);
+});
+
+// Init 3 canvases
+initSequencerCanvas(lanes[0], document.getElementById('canvasA'));
+initSequencerCanvas(lanes[1], document.getElementById('canvasB'));
+initSequencerCanvas(lanes[2], document.getElementById('canvasC'));
+
+// Build scale initially
+rebuildScale();
+
+// XY pads
+initXyPad(document.getElementById('xyPad1'), xyPad1Move);
+initXyPad(document.getElementById('xyPad2'), xyPad2Move);
+
+// ADSR sliders
+initAdsrSlider(document.getElementById('adsrA'),'attack');
+initAdsrSlider(document.getElementById('adsrD'),'decay');
+initAdsrSlider(document.getElementById('adsrS'),'sustain');
+initAdsrSlider(document.getElementById('adsrR'),'release');
+
+})();
+</script>
+
+</body>
+</html>
